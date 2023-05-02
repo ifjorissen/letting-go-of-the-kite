@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="theme-color" content="#000000">
+    <title>bells proj</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="instrument.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" integrity="sha512-jduERlz7En1IUZR54bqzpNI64AbffZWR//KJgF71SJ8D8/liKFZ+s1RxmUmB+bhCnIfzebdZsULwOrbVB5f3nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  </head>
+
+  <body>
+    <p>hello</p>
+    <label for="interval">Choose an interval:</label>
+    <select id="interval" name="intervals">
+      <option value="0,2,4" selected>triad [1,3,5]</option>
+      <option value="0,4,7">power chord [1,5,8]</option>
+      <option value="0,1,2,5">6/9 (no 5) [1,2,3,6]</option>
+      <option value="0,2,5,8">6/9 [1,3,6,9]</option>
+      <option value="0,1,2,4,5">6/9 [1,2,3,5,6]</option>
+    </select>
+    <button id="playing">start</button>
+  </body>
+</html>
