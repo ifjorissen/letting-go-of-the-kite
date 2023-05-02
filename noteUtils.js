@@ -50,7 +50,7 @@ function thread() {
       if (duration == undefined || duration == "randomOnce" || initialDuration == "random") {
         duration = durations[randomIndex];
       }
-      console.log(`pattern n:${note.toNote()} t:${time} d:${duration} ${randomIndex} ${arpPattern}`);
+      //console.log(`pattern n:${note.toNote()} t:${time} d:${duration} ${randomIndex} ${arpPattern}`);
       synth.triggerAttackRelease(note, duration, time);
     },
     //iterations: 4,

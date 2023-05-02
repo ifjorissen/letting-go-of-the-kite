@@ -6,7 +6,7 @@ const PlayMode = {
   Voices: "voices",
   Normal: "normal",
 };
-let playMode = PlayMode.Voices;
+let playMode = PlayMode.Normal;
 
 const keyToScaleMap = new Map([
   ['a', 0],
@@ -86,9 +86,13 @@ const noteToVoicingsMap = new Map([
   ]],
   [7, [
     [0,2,4],
-    [0,4,7,9 /* b: b,f#,b,d# */],
+    [0,4,7,11 /* b: b,f#,b,d# */],
     [0,3,7,9,11 /* Badd4: b,e,b,d#,f# */],
     [0,2,3,4 /* Badd4: b,d#,e,f# */],
+    // [7,9,11],
+    // [7,11,14,16 /* b: b,f#,b,d# */],
+    // [7,10,14,16,18 /* Badd4: b,e,b,d#,f# */],
+    // [7,9,10,11 /* Badd4: b,d#,e,f# */],
   ]],
 ])
 
@@ -101,16 +105,19 @@ const minorScalePattern = [0, 2, 3, 5, 7, 8, 10]; // harcoded minor scale patter
 class Instrument {
   #selectedScalePattern = majorScalePattern;
   #selectedInterval = [0, 2, 4];
-  #selectedTonic = keys[11];
+  #selectedTonic = keys[0];
   #selectedOctave = 1;
   selectedArpPattern = "randomWalk";
   selectedPlayMode = playMode;
+
+  arpSubdivision = "4n";
+  arpNoteDuration = "4n";
 
   #scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
 
   #noteToVoicingsMap;
 
-  ready;
+  //ready;
 
   set selectedScalePattern(val) {
     this.#selectedScalePattern = val;
@@ -149,34 +156,32 @@ class Instrument {
   //player;
 
   constructor() {
-    let resolver;
-   [this.ready, resolver] = thread();
     this.activelyPlaying = new Map();
-    this.setupSounds(resolver);
+    this.setupSounds();
   }
 
-  async setupSounds(resolver) {
-    const chorusEffect = new Tone.Chorus({
-      frequency: 1,
-      delayTime: 2, // ms
-      depth: .25, // [0,1]
-    });
-    chorusEffect.sync();
+  setupSounds() {
+    // const chorusEffect = new Tone.Chorus({
+    //   frequency: 1,
+    //   delayTime: 2, // ms
+    //   depth: .25, // [0,1]
+    // });
+    // chorusEffect.sync();
 
     // const reverbEffect = new Tone.Freeverb({
     //   roomSize: .5, dampening: 1000,
     // }).toDestination();
-    const reverbEffect = new Tone.Reverb(.8);
-    await reverbEffect.ready;
-    resolver();
-    //reverbEffect.sync();
+    // const reverbEffect = new Tone.Reverb(.8);
+    // await reverbEffect.ready;
+    // resolver();
+    // //reverbEffect.sync();
 
-    const distortionEffect = new Tone.Distortion({distortion: 0.3});
-    //distortionEffect.sync();
+    // const distortionEffect = new Tone.Distortion({distortion: 0.3});
+    // //distortionEffect.sync();
 
-    const feedbackDelayEffect = new Tone.FeedbackDelay({
-      delayTime: "8n", feedback: 0.25,
-    });
+    // const feedbackDelayEffect = new Tone.FeedbackDelay({
+    //   delayTime: "8n", feedback: 0.25,
+    // });
     //feedbackDelayEffect.sync();
 
     // this.drum = new Tone.MembraneSynth({
@@ -234,7 +239,6 @@ class Instrument {
       oscillator: {
         type: "square"
       },
-      volume: -25,
       "envelope": {
         "attack": 0.1,
         "decay": 0.1,
@@ -243,6 +247,10 @@ class Instrument {
       }
     });
     this.strings.sync();
+
+    this.drum.toDestination();
+    this.strings.toDestination();
+    this.synth.toDestination();
 
     // this.strings = new Tone.PolySynth(
     //   Tone.MetalSynth, { 
@@ -256,18 +264,18 @@ class Instrument {
     // );
     // this.strings.sync();
 
-    feedbackDelayEffect.toDestination();
-    //distortionEffect.toDestination();
-    reverbEffect.toDestination();
-    //chorusEffect.toDestination();
+    // feedbackDelayEffect.toDestination();
+    // //distortionEffect.toDestination();
+    // reverbEffect.toDestination();
+    // //chorusEffect.toDestination();
 
-    this.synth.chain(chorusEffect, reverbEffect);
-    this.drum.connect(feedbackDelayEffect);
-    //this.synth.toDestination();
-    // this.synth.chain(distortionEffect, feedbackDelayEffect, reverbEffect);
-    //this.synth.chain(feedbackDelayEffect, reverbEffect);
-    this.strings.chain(distortionEffect, feedbackDelayEffect);
-    //dthis.strings.toDestination();
+    // this.synth.chain(chorusEffect, reverbEffect);
+    // this.drum.connect(feedbackDelayEffect);
+    // //this.synth.toDestination();
+    // // this.synth.chain(distortionEffect, feedbackDelayEffect, reverbEffect);
+    // //this.synth.chain(feedbackDelayEffect, reverbEffect);
+    // this.strings.chain(distortionEffect, feedbackDelayEffect);
+    // //dthis.strings.toDestination();
   }
 
   isPlayingSound() {
@@ -307,7 +315,7 @@ class Instrument {
       const scaleIdx = getScaleNoteIndexForKey(event.key);
       if (scaleIdx != undefined) {
         // stop the currently playing note, if it exists
-        this.startNote();
+        this.startNote(scaleIdx);
       }
     });
 
@@ -338,7 +346,7 @@ class Instrument {
     //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "8n", "random");
     //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "4n", "random");
 
-    let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "16n", "32n");
+    let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, this.arpSubdivision, this.arpNoteDuration);
 
     let playChordStop = playChord(this.synth, chordNotes);
     arp.start(0);
@@ -382,7 +390,7 @@ class Instrument {
   
   generateNotes(rootNoteScaleIdx) {
     let scale = this.#scale;
-    if (playMode == PlayMode.Voices) {
+    if (this.selectedPlayMode == PlayMode.Voices) {
       let voicings = noteToVoicingsMap.get(rootNoteScaleIdx) ?? [[0,2,4]];
       let vid = Math.floor(Math.random() * voicings.length);
       let voicing = voicings[vid];
@@ -409,10 +417,22 @@ class Instrument {
       }
       let pitchedUp = rootScaleNote + 12;
   
-      let chordNotes = new Set([pitchedDown, ...generateTriad(rootNoteScaleIdx, 0), pitchedUp]);
+      let chordNotes = new Set([pitchedDown, ...this.generateTriad(rootNoteScaleIdx, 0, scale), pitchedUp]);
       chordNotes.delete(rootScaleNote);
       return [arpNotes, Array.from(chordNotes)];
     }
+  }
+
+  generateTriad(rootNoteScaleIdx, seventhChance = .5, scale) {
+    const intervals = [[0,2,4], [0,4,9], [0,4,7,9]]; 
+    let vid = Math.floor(Math.random() * intervals.length);
+    let interval = intervals[vid];
+
+    if (Math.random() < seventhChance) {
+      interval.push(6);
+    }
+    console.log(`generate chord ${rootNoteScaleIdx + 1}`);
+    return generateInterval(rootNoteScaleIdx, interval, scale);
   }
 }
 

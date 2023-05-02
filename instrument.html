@@ -7,13 +7,17 @@
     <title>bells proj</title>
 
     <link rel="stylesheet" href="style.css">
+    <script src="sample.js"></script>
     <script src="noteUtils.js"></script>
     <script src="instrument.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" integrity="sha512-jduERlz7En1IUZR54bqzpNI64AbffZWR//KJgF71SJ8D8/liKFZ+s1RxmUmB+bhCnIfzebdZsULwOrbVB5f3nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
   </head>
 
   <body>
-    <p>hello</p>
+    <p>press 1,2,3,4,5,6,7,8,9 to change arpeggio pattern</p>
+    <p>press q,w,e,r,t,y,u,i,o,p,[,] to choose tonic note</p>
+    <p>press a,s,d,f or h,j,k,l to make a sound</p>
+    <button id="playing">start</button>
     <label for="interval">Choose an interval:</label>
     <select id="interval" name="intervals">
       <option value="0,2,4" selected>triad [1,3,5]</option>

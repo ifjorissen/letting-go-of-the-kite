@@ -7,6 +7,15 @@ let playing = false;
 let audioPlayer;
 let instrument;
 
+// todo: 
+// * overall volume mixing (Tone.Channel)
+// * visuals that correspond with timestamps
+// - add graininess
+// * consider adding an fsm so that the piece only
+// progresses when certain chords are played
+// * play a gust of wind when "a wayward gust" plays
+// more ambient nature sounds -- birds, wind
+
 const lettingGoOfTheKiteTimeStamps = [
   2.23, /* wind */
   4.42, /* letting go of the kite */
@@ -48,12 +57,12 @@ async function setup() {
     loop: true,
     url: "assets/letting_go_of_the_kite.m4a",
     playbackRate: 1,
-    volume: 10,
+    volume: 0,
   });
   audioPlayer.sync();
   //audioPlayer.toDestination();
 
-  const reverbEffect = new Tone.Reverb(.5);
+  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .05, wet: .75});
   await reverbEffect.ready;
 
   const chorusEffect = new Tone.Chorus({
@@ -76,7 +85,9 @@ async function setup() {
   instrument.selectedTonic = keys[11]; // B0
   instrument.selectedOctave = 1;
   instrument.selectedArpPattern = "randomWalk";
-  await instrument.ready;
+  instrument.arpNoteDuration = "32n";
+  instrument.arpSubdivision = "16n";
+  await setupInstrumentEffects(instrument);
 
   // set up event listeners on dom
   const playButton = document.getElementById("playing");
@@ -91,6 +102,40 @@ async function setup() {
   });
 
   setupEventListeners(audioPlayer, instrument);
+}
+
+async function setupInstrumentEffects(instrument) {
+  let destination = Tone.getDestination();
+  // unhook all the sounds from dest
+  instrument.synth.disconnect(destination);
+  instrument.drum.disconnect(destination);
+  instrument.strings.disconnect(destination);
+
+  const chorusEffect = new Tone.Chorus({
+    frequency: 1,
+    delayTime: 2, // ms
+    depth: .25, // [0,1]
+    wet: .9,
+  });
+  chorusEffect.sync();
+
+  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .1, wet: .75});
+  await reverbEffect.ready;
+
+  const distortionEffect = new Tone.Distortion({distortion: 0.3, wet: .75});
+
+  const feedbackDelayEffect = new Tone.FeedbackDelay({
+    delayTime: "8n", feedback: 0.25, wet: .75,
+  });
+
+  feedbackDelayEffect.toDestination();
+  reverbEffect.toDestination();
+
+  instrument.strings.set({volume: -20});
+
+  instrument.synth.chain(chorusEffect, reverbEffect);
+  instrument.drum.connect(feedbackDelayEffect);
+  instrument.strings.chain(distortionEffect, feedbackDelayEffect);
 }
 
 function setupEventListeners(player, instrument) {
