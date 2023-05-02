@@ -144,7 +144,7 @@ window.addEventListener("DOMContentLoaded", async (event) => {
 let canPlayPromise, canPlayRes, canPlayRe;
 [canPlayPromise, canPlayRes, canPlayRej] = thread();
 
-async function setup() {
+async function setupInstrument() {
   // TODO: drum
   drum = new Tone.MembraneSynth();
   synth = new Tone.PolySynth({

@@ -1,7 +1,6 @@
 const majorIntervalAbsolute = [0, 4, 7, 11];
 const minorIntervalAbsolute = [0, 3, 7, 10];
 const powerIntervalAbsolute = [0, 7, 12];
-let playing = false;
 
 const PlayMode = {
   Voices: "voices",
@@ -82,6 +81,10 @@ const noteToVoicingsMap = new Map([
     [0,4,6,9 /* g#m7: g#,d#,f#,b# */]
   ]],
   [6, [
+    [0,4,7,9 /* a# dim: a#,e,a#,c# */],
+    [0,2,4 /* a#dim: a#,c#,e */],
+  ]],
+  [7, [
     [0,2,4],
     [0,4,7,9 /* b: b,f#,b,d# */],
     [0,3,7,9,11 /* Badd4: b,e,b,d#,f# */],
@@ -89,270 +92,328 @@ const noteToVoicingsMap = new Map([
   ]],
 ])
 
-const activelyPlaying = new Map();
-
 // Array representing octave [C0, B0]
 //24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
 const keys = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const majorScalePattern = [0, 2, 4, 5, 7, 9, 11]; // harcoded major scale pattern (semitones above tonic)
 const minorScalePattern = [0, 2, 3, 5, 7, 8, 10]; // harcoded minor scale pattern (semitones above tonic)
-//const notePattern = [2, 2, 1, 2, 2, 2, 1];
-let selectedScalePattern = majorScalePattern;
-let selectedInterval = [0, 2, 4];
-let selectedTonic = keys[11];
-let selectedOctave = 1;
 
-//const mode = Mode.Ionian;
-let debugOn = true;
-let scale = generateKeyOctave(selectedTonic, selectedScalePattern, selectedOctave);
-let selectedArpPattern = "randomWalk";
+class Instrument {
+  #selectedScalePattern = majorScalePattern;
+  #selectedInterval = [0, 2, 4];
+  #selectedTonic = keys[11];
+  #selectedOctave = 1;
+  selectedArpPattern = "randomWalk";
+  selectedPlayMode = playMode;
 
-// instruments
-let strings;
-let synth;
-let drum;
-let player;
+  #scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
 
-window.addEventListener("DOMContentLoaded", async (event) => {
-  console.log("DOM fully loaded and parsed");
-  await setup();
-});
+  #noteToVoicingsMap;
 
-let canPlayPromise, canPlayRes, canPlayRe;
-[canPlayPromise, canPlayRes, canPlayRej] = thread();
+  ready;
 
-async function setup() {
-  // TODO: drum
-  drum = new Tone.MembraneSynth();
-  synth = new Tone.PolySynth({
-    // "envelope": {
-    //   "attack": 0.5,
-    //   "decay": 0,
-    //   "sustain": 0.3,
-    //   "release": 0,
-    // },
-    // portamento: .1,
-    //partialCount: 2,
-    "volume": -10,
-  }).toDestination();
-  synth.sync()
-  strings = new Tone.PolySynth({
-    "volume": -10,
-    "envelope": {
-      "attack": 0.25,
-      "decay": .1,
-      "sustain": 0.25,
-      "release": .1,
-    }
-  }).toDestination();
-  strings.sync();
+  set selectedScalePattern(val) {
+    this.#selectedScalePattern = val;
+    this.#scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
+  }
 
-  // todo: effects / reverb/ etc
-  // todo: wind sounds
-   player = new Tone.Player({
-    onload: () => {
-      console.log('loaded audio');
-      canPlayRes();
-    },
-    onerror: (e) => canPlayRej(err),
-    onstop: (s) => {
-      console.log('player stopped');
-      console.log(s);
-    },
-    loop: true,
-    url: "assets/letting_go_of_the_kite.m4a",
-    playbackRate: 1,
-   }).toDestination();
-   player.sync();
+  set selectedTonic(val) {
+    this.#selectedTonic = val;
+    this.#scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
+  }
 
-  // set up event listeners
-  const playButton = document.getElementById("playing");
-  playButton.addEventListener('click', async (event) => {
-    const isPlaying = await togglePlaying();
-    if (isPlaying) {
-      playButton.textContent = "pause";
+  set selectedOctave(val) {
+    this.#selectedOctave = val;
+    this.#scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
+  }
+
+  set noteToVoicingsMap(val) {
+    this.#noteToVoicingsMap = val;
+    this.selectedPlayMode = PlayMode.Voices;
+  }
+
+  set volume(val) {
+    this.synth.set({"volume": val});
+    this.strings.set({"volume": val});
+    this.drum.set({"volume": val});
+  }
+
+  // map of notes that are actively playing
+  // key = scaleidx, val = callback function to stop notes
+  activelyPlaying;
+
+  // instruments
+  strings;
+  synth;
+  drum;
+  //player;
+
+  constructor() {
+    let resolver;
+   [this.ready, resolver] = thread();
+    this.activelyPlaying = new Map();
+    this.setupSounds(resolver);
+  }
+
+  async setupSounds(resolver) {
+    const chorusEffect = new Tone.Chorus({
+      frequency: 1,
+      delayTime: 2, // ms
+      depth: .25, // [0,1]
+    });
+    chorusEffect.sync();
+
+    // const reverbEffect = new Tone.Freeverb({
+    //   roomSize: .5, dampening: 1000,
+    // }).toDestination();
+    const reverbEffect = new Tone.Reverb(.8);
+    await reverbEffect.ready;
+    resolver();
+    //reverbEffect.sync();
+
+    const distortionEffect = new Tone.Distortion({distortion: 0.3});
+    //distortionEffect.sync();
+
+    const feedbackDelayEffect = new Tone.FeedbackDelay({
+      delayTime: "8n", feedback: 0.25,
+    });
+    //feedbackDelayEffect.sync();
+
+    // this.drum = new Tone.MembraneSynth({
+    //   oscillator: {
+    //     type: "square"
+    //   },
+		// 	pitchDecay: 0.008,
+		// 	octaves: 2,
+		// 	envelope: {
+		// 		attack: 0.0006,
+		// 		decay: 0.001,
+		// 		sustain: 0,
+    //     release: 0,
+		// 	}
+		// }).toDestination();
+
+    this.drum = new Tone.MembraneSynth({
+      //volume: -10,
+			pitchDecay: .0008,
+			octaves: 2,
+			envelope: {
+				attack: 0.0006,
+				decay: 1.0,
+				sustain: 0,
+				release: 1.0,
+			}
+		});
+    this.drum.sync();
+
+    // const conga = new Tone.MembraneSynth({
+		// 	pitchDecay: .0008,
+		// 	octaves: 2,
+		// 	envelope: {
+		// 		attack: 0.0006,
+		// 		decay: 1.0,
+		// 		sustain: 0,
+		// 		release: 1.0,
+		// 	}
+		// }).toDestination();
+
+    this.synth = new Tone.PolySynth({
+      "envelope": {
+        "attack": 0.5,
+        "decay": .1,
+        "sustain": 0.3,
+        "release": 0,
+      },
+      portamento: .1,
+      //partialCount: 2,
+      //"volume": -10,
+    });
+    this.synth.sync();
+
+    this.strings = new Tone.PolySynth({
+      oscillator: {
+        type: "square"
+      },
+      volume: -25,
+      "envelope": {
+        "attack": 0.1,
+        "decay": 0.1,
+        "sustain": 0.25,
+        "release": .1,
+      }
+    });
+    this.strings.sync();
+
+    // this.strings = new Tone.PolySynth(
+    //   Tone.MetalSynth, { 
+    //     harmonicity: 12,
+    //     resonance: 800,
+    //     modulationIndex: 2,
+    //     envelope: {
+    //       decay: 0.4,
+    //     },
+    //   },
+    // );
+    // this.strings.sync();
+
+    feedbackDelayEffect.toDestination();
+    //distortionEffect.toDestination();
+    reverbEffect.toDestination();
+    //chorusEffect.toDestination();
+
+    this.synth.chain(chorusEffect, reverbEffect);
+    this.drum.connect(feedbackDelayEffect);
+    //this.synth.toDestination();
+    // this.synth.chain(distortionEffect, feedbackDelayEffect, reverbEffect);
+    //this.synth.chain(feedbackDelayEffect, reverbEffect);
+    this.strings.chain(distortionEffect, feedbackDelayEffect);
+    //dthis.strings.toDestination();
+  }
+
+  isPlayingSound() {
+    if (this.synth.activeVoices == 0 && this.strings.activeVoices == 0) {
+      return false;
     } else {
-      playButton.textContent = "play";
+      return true;
     }
-  });
+  }
 
-  document.addEventListener('keydown', (event) => {
-    if (event.repeat) { return }
-    console.log("keydown: " + event.key);
+  silence() {
+    this.activelyPlaying.forEach((stop) => stop());
+    this.synth.releaseAll();
+    this.strings.releaseAll();
+  }
 
-    const newArpPattern = getArpPatternForKey(event.key);
-    if (newArpPattern != undefined) {
-      selectedArpPattern = newArpPattern;
-    }
-
-    if (playMode == PlayMode.Normal) {
+  setupDefaultEventListeners() {
+    document.addEventListener('keydown', (event) => {
+      if (event.repeat) { return }
+      console.log("keydown: " + event.key);
+  
+      const newArpPattern = getArpPatternForKey(event.key);
+      if (newArpPattern != undefined) {
+        this.selectedArpPattern = newArpPattern;
+      }
+  
       const newScalePattern = getScalePatternForKey(event.key);
       if (newScalePattern != undefined) {
-        console.log("newScalePattern");
-        selectedScalePattern = newScalePattern;
-        scale = generateKeyOctave(selectedTonic, selectedScalePattern, selectedOctave);
+        this.selectedScalePattern = newScalePattern;
       }
   
       const newTonic = getTonicForKey(event.key);
       if (newTonic != undefined) {
-        scale = generateKeyOctave(newTonic, selectedScalePattern, selectedOctave);
-        selectedTonic = newTonic;
-        console.log(scale);
-        console.log(scale.map((note) => Tone.Frequency(note, "midi").toNote()));
+        this.selectedTonic = newTonic;
       }
-    }
+  
+      const scaleIdx = getScaleNoteIndexForKey(event.key);
+      if (scaleIdx != undefined) {
+        // stop the currently playing note, if it exists
+        this.startNote();
+      }
+    });
 
-    const scaleIdx = getScaleNoteIndexForKey(event.key);
-    if (scaleIdx != undefined) {
-      // stop the currently playing note, if it exists
-      stopNote(scaleIdx);
-
-      let stopcb = startNote(scaleIdx);
-      activelyPlaying.set(scaleIdx, stopcb);
-    }
-  });
-
-  const intervalEl = document.getElementById("interval");
-  selectedInterval = getIntervalFromString(intervalEl.value);
-  intervalEl.addEventListener('change', (event) => {
-    if (playMode = PlayMode.Normal) {
-      let interval = event.target.value;
-      console.log(`new interval ${interval}`);
-      selectedInterval = getIntervalFromString(event.target.value);
-    }
-  });
-
-  document.addEventListener('keyup', (event) => {
-    const scaleIdx = getScaleNoteIndexForKey(event.key);
-    stopNote(scaleIdx);
-  });
-}
-
-function getIntervalFromString(str) {
-  return str.split(',').map((e) => parseInt(e, 10));
-}
-
-function startNote(scaleIdx) {
-  console.log('start note ' + scaleIdx);
-  //let chord = generateTriad(scaleIdx);
-  // let chord = generateInterval(scaleIdx, selectedInterval);
-  // let arp = makeArp(strings, chord, arpPattern);
-  // let playChordStop = playChord(synth, chord);
-
-  let [arpNotes, chordNotes] = generateNotes(scaleIdx, selectedInterval);
-  console.log("arpNotes, chordNotes");
-  console.log(arpNotes, arpNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
-  console.log(chordNotes, chordNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
-  let arp = makeArp(strings, arpNotes, selectedArpPattern);
-  let playChordStop = playChord(synth, chordNotes);
-  arp.start(0);
-  player.start();
-  let stopCb = () => {
-    player.stop();
-    // cancel necessary?
-    playChordStop();
-    arp.cancel();
-    arp.stop();
-    arp.dispose()
+    document.addEventListener('keyup', (event) => {
+      const scaleIdx = getScaleNoteIndexForKey(event.key);
+      this.stopNote(scaleIdx);
+    });
   }
-  return stopCb;
-}
 
-function stopNote(scaleIdx) {
-  let stopcb = activelyPlaying.get(scaleIdx);
-  if (stopcb != undefined) {
-    console.log('stop note ' + scaleIdx);
-    activelyPlaying.delete(scaleIdx);
-    stopcb();
+  startNote(scaleIdx) {
+    console.log('instrument start note ' + scaleIdx);
+    this.stopNote(scaleIdx);
+    let stopcb = this.#startNote(scaleIdx);
+    this.activelyPlaying.set(scaleIdx, stopcb);
   }
-}
 
-function generateTriad(rootNoteScaleIdx, seventhChance = .5) {
-  const interval = [0,2,4]; 
-  if (Math.random() < seventhChance) {
-    interval.push(6);
-  }
-  console.log(`generate chord ${rootNoteScaleIdx + 1}`);
-  return generateInterval(rootNoteScaleIdx, interval);
-}
+  #startNote(scaleIdx) {
+    //let chord = generateTriad(scaleIdx);
+    // let chord = generateInterval(scaleIdx, selectedInterval);
+    // let arp = makeArp(strings, chord, arpPattern);
+    // let playChordStop = playChord(synth, chord);
+  
+    let [arpNotes, chordNotes] = this.generateNotes(scaleIdx);
+    let drumSeq = this.makeDrumPart(this.drum);
+    console.log("arpNotes, chordNotes");
+    console.log(arpNotes, arpNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
+    console.log(chordNotes, chordNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
+    //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "8n", "random");
+    //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "4n", "random");
 
-function generateInterval(rootNoteScaleIdx, interval) {
-  console.log(`generate interval ${rootNoteScaleIdx}`);
-  //console.log(interval, scale);
-  // TODO: use tone.Frequency https://tonejs.github.io/docs/14.7.77/fn/Frequency
-  // todo: consider using Tone.Frequency.harmonize
-  const notes = interval.map((i) => {
-    let idx = i + rootNoteScaleIdx;
-    // if idx < 0:
-    // pitch note down an octave
-    // if idx > 7 pitch note up an octave
-    let scaleIndex = idx % scale.length;
-    if (scaleIndex < 0) {
-      console.log(`scale index ${scaleIndex} newidx: ${(scale.length) + scaleIndex}`)
-      scaleIndex = (scale.length) + scaleIndex;
+    let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "16n", "32n");
+
+    let playChordStop = playChord(this.synth, chordNotes);
+    arp.start(0);
+    drumSeq.start(0);
+    let stopCb = () => {
+      // cancel necessary?
+      playChordStop();
+      drumSeq.stop();
+      arp.cancel();
+      arp.stop();
+      arp.dispose();
     }
-    let scaleNote = scale[scaleIndex];
-    // if ((idx / scale.length) >= 1) {
-    //   scaleNote += 12;
-    // }
-    let original = scaleNote;
-    scaleNote += Math.floor(Math.abs(idx/scale.length)) * (Math.sign(idx)) * 12;
-    console.log(`i ${i} idx: ${idx} rootnoteid: ${rootNoteScaleIdx} original output: ${original} scaled: ${scaleNote}`);
-    return scaleNote;
-  });
-  // const notes = interval.map((i) => {
-  //   let idx = i + rootNoteScaleIdx;
-  //   let scaleNote = scale[idx % (scale.length)];
-  //   if ((idx / (scale.length)) >= 1) {
-  //     scaleNote += 12;
-  //   }
-  //   return scaleNote;
-  // });
-  console.log(notes);
-  console.log(notes.map((note) =>Tone.Frequency(note, "midi").toNote()));
-  return notes;
-}
-
-function generateNotes(rootNoteScaleIdx, interval) {
-  if (playMode == PlayMode.Voices) {
-    let voicings = noteToVoicingsMap.get(rootNoteScaleIdx) ?? [[0,2,4]];
-    let vid = Math.floor(Math.random() * voicings.length);
-    let voicing = voicings[vid];
-    let rootScaleNote = scale[rootNoteScaleIdx % (scale.length)];
-    console.log(`voices playmode for note#: ${rootNoteScaleIdx} ${frequencyFromNoteNumber(rootScaleNote).toNote()} voicing: ${voicing}`);
-    console.log(scale);
-    let arpNotes = generateInterval(rootNoteScaleIdx, voicing);
-    let chordNotes = arpNotes;
-    return [arpNotes, chordNotes];
-  } else {
-    // generate all notes of the interval for the arpeggio
-    // todo, add more notes to interval at random? like the octave 
-    // or something.
-    // or randomize the voicing
-    let arpNotes = generateInterval(rootNoteScaleIdx, interval);
-
-    // pick a chord that can sit under the arpeggio
-    // take the root note and pitch it down one octave
-    let rootScaleNote = scale[rootNoteScaleIdx % (scale.length)];
-    let pitchedDown = rootScaleNote;
-    if (rootScaleNote > 24) {
-      pitchedDown -= 12;
-    }
-    let pitchedUp = rootScaleNote + 12;
-
-    let chordNotes = new Set([pitchedDown, ...generateTriad(rootNoteScaleIdx, 0), pitchedUp]);
-    chordNotes.delete(rootScaleNote);
-    return [arpNotes, Array.from(chordNotes)];
+    return stopCb;
   }
-}
+  
+  stopNote(scaleIdx) {
+    let stopcb = this.activelyPlaying.get(scaleIdx);
+    if (stopcb != undefined) {
+      console.log('stop note ' + scaleIdx);
+      this.activelyPlaying.delete(scaleIdx);
+      stopcb();
+    }
+    this.synth.releaseAll();
+  }
 
-/** 
- * Generates one octave of a key given a [tonic] and [scalePattern]
- */
-function generateKeyOctave(tonic, scalePattern, octaveNum = 0) {
-  let notes = scalePattern;
-  let octave = notes.map((i) => tonic + i + 12*octaveNum + 24);
-  return octave;
+  makeDrumPart(synth) {
+    // const seq = new Tone.Sequence((time, note) => {
+    //   synth.triggerAttackRelease(note, 0.1, time);
+    //   // subdivisions are given as subarrays
+    // }, ["B0", null, [null, "B0", "B0"], null], "4n");
+    // const seq = new Tone.Sequence((time, note) => {
+    //   synth.triggerAttackRelease(note, 0.1, time);
+    //   // subdivisions are given as subarrays
+    // }, ["A0", null, ["A0", "A0"], null], "8n");
+    const seq = new Tone.Sequence((time, note) => {
+      synth.triggerAttackRelease(note, 0.1, time);
+      // subdivisions are given as subarrays
+    }, [null, "A0", null, null], "8n");
+    return seq;
+  }
+  
+  generateNotes(rootNoteScaleIdx) {
+    let scale = this.#scale;
+    if (playMode == PlayMode.Voices) {
+      let voicings = noteToVoicingsMap.get(rootNoteScaleIdx) ?? [[0,2,4]];
+      let vid = Math.floor(Math.random() * voicings.length);
+      let voicing = voicings[vid];
+      let rootScaleNote = scale[rootNoteScaleIdx % (scale.length)];
+      console.log(`voices playmode for note#: ${rootNoteScaleIdx} ${frequencyFromNoteNumber(rootScaleNote).toNote()} voicing: ${voicing}`);
+      console.log(scale);
+      let arpNotes = generateInterval(rootNoteScaleIdx, voicing, scale);
+      let chordNotes = arpNotes;
+      return [arpNotes, chordNotes];
+    } else {
+      // generate all notes of the interval for the arpeggio
+      // todo, add more notes to interval at random? like the octave 
+      // or something.
+      // or randomize the voicing
+      let interval = this.#selectedInterval;
+      let arpNotes = generateInterval(rootNoteScaleIdx, interval, scale);
+  
+      // pick a chord that can sit under the arpeggio
+      // take the root note and pitch it down one octave
+      let rootScaleNote = scale[rootNoteScaleIdx % (scale.length)];
+      let pitchedDown = rootScaleNote;
+      if (rootScaleNote > 24) {
+        pitchedDown -= 12;
+      }
+      let pitchedUp = rootScaleNote + 12;
+  
+      let chordNotes = new Set([pitchedDown, ...generateTriad(rootNoteScaleIdx, 0), pitchedUp]);
+      chordNotes.delete(rootScaleNote);
+      return [arpNotes, Array.from(chordNotes)];
+    }
+  }
 }
 
 function playChord(synth, midiNotes, duration) {
@@ -368,115 +429,4 @@ function playChord(synth, midiNotes, duration) {
     console.log(`stopped notes ${notes.map((n) => n.toNote())} . ${synth.activeVoices}`);
   }
   return stopcb;
-}
-
-/**
- * @param interval time in seconds or relative time between notes
- * @param arpPattern how the notes in the arpeggio are cycled
- * @param duration duration of arpeggio
- */
-function makeArp(synth, midiNotes, arpPattern) {
-  let notes = midiNotes.map((m) => frequencyFromNoteNumber(m));
-  let subdivision = "8n";
-  // const seq = new Tone.Sequence((time, note) => {
-  //   synth.triggerAttackRelease(note, noteDuration, time);
-  // }, notes, subdivision).start(0);
-  const durations = ["2n", "4n", "4n.", "8n", "8n.", "16n"];
-
-  const pattern = new Tone.Pattern({
-    callback: (time, note) => {
-      // the order of the notes passed in depends on the pattern
-      const randomIndex = Math.floor(Math.random() * durations.length);
-      let duration = "4n";
-      console.log(`pattern n:${note.toNote()} t:${time} d:${duration} ${arpPattern}`);
-      
-      synth.triggerAttackRelease(note, duration, time);
-    },
-    //iterations: 4,
-    probability: 1.0,
-    //humanize: true,
-    interval: subdivision,
-    values: notes,
-    pattern: arpPattern,
-  });
-  return pattern;
-}
-
-/** Converts from a midi note number to a frequency in hz */
-// function frequencyFromNoteNumber(note) {
-//   return 440 * Math.pow(2, (note - 69) / 12);
-// }
-
-function frequencyFromNoteNumber(note) {
-  return Tone.Frequency(note, "midi");
-}
-
-async function togglePlaying() {
-  await Tone.start();
-  await canPlayPromise;
-  playing = !playing;
-  console.log(`togglePlaying isPlaying ${playing}`);
-  
-  if (playing) {
-    Tone.Transport.start();
-  } else {
-    Tone.Transport.cancel();
-    Tone.Transport.stop();
-  }
-  return playing;
-}
-
-function getArpPatternForKey(key) {
-  let pattern = keyToArpPatternMap.get(key);
-  if (pattern != undefined) {
-    console.log(`get arp pattern for key ${key} pattern ${pattern}`);
-  }
-  return pattern;
-}
-
-function getTonicForKey(key) {
-  let tonic = keyToTonicMap.get(key);
-  if (tonic != undefined) {
-    console.log(`get tonic note for key ${key} tonic ${tonic}`);
-  }
-  return tonic;
-}
-
-function getScaleNoteIndexForKey(key) {
-  let id = keyToScaleMap.get(key);
-  if (id != undefined) {
-    console.log(`get scale idx note for key ${key} id ${id}`);
-  }
-  return id;
-}
-
-function getMidiNoteForKey(key) {
-  let idx = keyToScaleMap.get(key);
-  if (idx != undefined) {
-    console.log(`get midi note for key ${key}`);
-  }
-  return scale[idx];
-}
-
-function getScalePatternForKey(key) {
-  let pattern;
-  if (key == 'm') {
-    pattern = majorScalePattern;
-  } else if (key == 'n') {
-    pattern = minorScalePattern;
-  }
-
-  if (pattern != undefined) {
-    console.log(`get scale pattern for key ${key} scale ${pattern}`);
-  }
-  return pattern;
-}
-
-function thread() {
-  let res, rej;
-  let p = new Promise((resolve, reject) => {
-    res = resolve;
-    rej = reject;
-  });
-  return [p, res, rej];
 }
