@@ -62,7 +62,7 @@ async function setup() {
   audioPlayer.sync();
   //audioPlayer.toDestination();
 
-  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .05, wet: .75});
+  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .05, wet: .7});
   await reverbEffect.ready;
 
   const chorusEffect = new Tone.Chorus({
@@ -115,14 +115,14 @@ async function setupInstrumentEffects(instrument) {
     frequency: 1,
     delayTime: 2, // ms
     depth: .25, // [0,1]
-    wet: .9,
+    wet: .8,
   });
   chorusEffect.sync();
 
-  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .1, wet: .75});
+  const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .1, wet: .7});
   await reverbEffect.ready;
 
-  const distortionEffect = new Tone.Distortion({distortion: 0.3, wet: .75});
+  const distortionEffect = new Tone.Distortion({distortion: 0.3, wet: .7});
 
   const feedbackDelayEffect = new Tone.FeedbackDelay({
     delayTime: "8n", feedback: 0.25, wet: .75,
@@ -131,7 +131,8 @@ async function setupInstrumentEffects(instrument) {
   feedbackDelayEffect.toDestination();
   reverbEffect.toDestination();
 
-  instrument.strings.set({volume: -20});
+  instrument.volume = -15;
+  instrument.strings.set({volume: -15});
 
   instrument.synth.chain(chorusEffect, reverbEffect);
   instrument.drum.connect(feedbackDelayEffect);
