@@ -363,8 +363,8 @@ let initialObjSettings = function(sketchWidth, sketchHeight) {
   let desiredGrassHeight = desiredGrassWidth/grassAspectRatio;
 
   let magnifyingGlassAspectRatio = magnifyingGlass.width/magnifyingGlass.height;
-  let desiredMagnifyingGlassWidth = desiredMagnifyingGlassHeight*magnifyingGlassAspectRatio;
   let desiredMagnifyingGlassHeight = sketchHeight;
+  let desiredMagnifyingGlassWidth = desiredMagnifyingGlassHeight*magnifyingGlassAspectRatio;
 
   return new Map([
     ['sky', {
