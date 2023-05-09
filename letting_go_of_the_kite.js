@@ -4,11 +4,6 @@ let canPlayPromise, canPlayRes, canPlayRe;
 
 let playing = false;
 
-//let audioPlayer;
-//let instrument;
-
-//let phraseProgress = 0;
-
 const lettingGoOfTheKiteTimeStamps = [
   2.23, /* wind */
   4.42, /* letting go of the kite */ 
@@ -40,10 +35,6 @@ hasListenedToPhrase.fill(false);
 
 // TODO: keymap of active keys
 // https://stackoverflow.com/questions/5203407/how-to-detect-if-multiple-keys-are-pressed-at-once-using-javascript
-
-// TODO: double check off by one-- there could be an error
-// phrase progress in viz. js might be skipping the first bc 
-// event in updateProgress emits count+1
 
 const windGusts = [
  8,
@@ -99,12 +90,12 @@ window.addEventListener("DOMContentLoaded", async (_) => {
       instrument.arpNoteDuration = "random";
       instrument.arpSubdivision = "8n";
       instrument.arpNoteProbability = .5;
-    } else if (phraseId == 12) {
+    } else if (phraseId == 11) {
       instrument.selectedArpPattern = "randomWalk";
       instrument.arpNoteDuration = "random";
       instrument.arpSubdivision = "4n";
       instrument.arpNoteProbability = .3;
-    } else if (phraseId == 14){
+    } else if (phraseId == 13){
       instrument.selectedArpPattern = "randomWalk";
       instrument.arpNoteDuration = "random";
       instrument.arpSubdivision = "2n";
@@ -129,20 +120,6 @@ let windPlayer;
 
 
 async function instrumentSetup() {
-  // audioSamples = new Tone.Players({
-  //   kite: "assets/letting_go_of_the_kite.m4a",
-  //   wind: "assets/santa_fe_wind.m4a",
-  // });
-
-
-  // audioSamples.player('wind').sync();
-  // audioSamples.player('kite').onstop = (s) => {
-  //   // let position = s.toSeconds(Tone.Transport.position);
-  //   // console.log(`KITE PLAYER STOPPED: ${position}`);
-  //   // console.log(s);
-  // }
-  //audioSamples.player('kite').sync();
-
   kitePlayer = new Tone.Player("assets/letting_go_of_the_kite.m4a");
   windPlayer = new Tone.Player("assets/santa_fe_wind.m4a");
 
@@ -163,9 +140,6 @@ async function instrumentSetup() {
 
   kitePlayer.sync();
   windPlayer.sync();
-  //audioSamples.player('kite').chain(distortionEffect, reverbEffect);
-  //audioSamples.player('wind').connect(reverbEffect);
-
 
   // setup instrument
   const instrument = new Instrument();
@@ -177,26 +151,11 @@ async function instrumentSetup() {
   instrument.selectedArpPattern = "randomWalk";
   instrument.arpNoteDuration = "32n";
   instrument.arpSubdivision = "16n";
+
   await setupInstrumentEffects(instrument);
+  await Promise.all([checkPlayerLoaded(kitePlayer), checkPlayerLoaded(windPlayer)]);
 
-  //const playButton = document.getElementById("playing");
-
-  //await checkPlayerLoaded(audioSamples);
-  await checkPlayerLoaded(kitePlayer);
-  await checkPlayerLoaded(windPlayer);
-  // playButton.textContent = "play";
-
-  // // set up event listeners on dom
-  // playButton.addEventListener('click', async (_) => {
-  //   playing = await togglePlaying(playing, audioSamples.state);
-  //   if (playing) {
-  //     playButton.textContent = "pause";
-  //   } else {
-  //     playButton.textContent = "play";
-  //   }
-  // });
-
-  setupEventListeners(null, instrument);
+  setupEventListeners(instrument);
   return instrument;
 }
 
@@ -251,16 +210,8 @@ async function setupInstrumentEffects(instrument) {
   instrument.strings.chain(distortionEffect, feedbackDelayEffect);
 }
 
-function setupEventListeners(samples, instrument) {
-  // let phraseProgress = phr;
-  // let kitePlayer = samples.player('kite');
-  // let windPlayer = samples.player('wind'); 
-
+function setupEventListeners(instrument) {
   document.addEventListener('keydown', (event) => {
-    // let phraseProgress = hasListenedToPhrase.findIndex((e) => !e);
-    // updatePhraseProgress(phraseProgress);
-    //phraseProgress = updatePhraseProgress(phraseProgress);
-
     if (event.repeat) { return }
     let phraseProgress = hasListenedToPhrase.findIndex((e) => !e);
     updatePhraseProgress(phraseProgress);
@@ -284,30 +235,19 @@ function setupEventListeners(samples, instrument) {
           windPlayer.loopStart = windGusts[0];
           windPlayer.loopEnd = windGusts[1];
           windPlayer.start("+.75d");
-        } else {
-          console.log('wind already started');
         }
       } else if (windPlayer.state == 'started') {
-        console.log('STOP WIND???');
-        console.log(windPlayer.state);
+        // console.log('STOP WIND???');
+        // console.log(windPlayer.state);
         windPlayer.loop = false;
         windPlayer.stop();
       }
-
-      // uncomment and remove the chek on hasListenedToPhrase to 
-      // restore original behavior
-      // phraseProgress = updatePhraseProgress(phraseProgress);
     }
   });
 
   document.addEventListener('keyup', (event) => {
     const scaleIdx = getScaleNoteIndexForKey(event.key);
     instrument.stopNote(scaleIdx);
-    // if (scaleIdx != undefined || !instrument.isPlayingSound()) {
-    //   updatePhraseProgress(phraseProgress);
-    //   lastPhraseEnd = Tone.Transport.now();
-    //   samples.stopAll();
-    // }
 
     if (scaleIdx != undefined) {
       let phraseProgress = hasListenedToPhrase.findIndex((e) => !e);
@@ -316,13 +256,13 @@ function setupEventListeners(samples, instrument) {
 
     // stop the samples if there's nothing playing
     if (!instrument.isPlayingSound()) {
-      console.log('should stop all samples');
+      //console.log('should stop all samples');
       lastPhraseEnd = Tone.Transport.now();
       //samples.stopAll();
       windPlayer.stop();
       kitePlayer.stop();
     }
-    console.log('keyup next phrase' + phraseProgress);
+    //console.log('keyup next phrase' + phraseProgress);
   });
 }
 
@@ -332,9 +272,7 @@ function updatePhraseProgress(nextPhrase) {
   let elapsed = (lastPhraseEnd-lastPhraseStart)/1000;
   console.log(`updatePhrase progress before: ${current} ${lastPhraseStart} ${lastPhraseEnd} ${elapsed}`);
   if (current < 0) return;
-  console.log(hasListenedToPhrase);
   if (hasListenedToPhrase[current-1]) {
-    console.log('inner loop LISTENED UPDATE PHRASE PROGRESS before: ', current);
     //let phraseProgress = (1 + current) % lettingGoOfTheKiteTimeStamps.length;
     let phraseProgress = (current) % lettingGoOfTheKiteTimeStamps.length;
 
@@ -357,27 +295,7 @@ function setKiteLoop(player, count) {
   let phraseStartIdx = count % (lettingGoOfTheKiteTimeStamps.length-1);
   let phraseEndIdx = (count + 1) % (lettingGoOfTheKiteTimeStamps.length-1);
   let duration = lettingGoOfTheKiteTimeStamps[phraseEndIdx] - lettingGoOfTheKiteTimeStamps[phraseStartIdx];
-  
-  // the effect of this setup is that you have to have a keydown the the entire duration of the loop
-  // at least once.
-  // let eventId = Tone.Transport.scheduleOnce(() => {
-  //   hasListenedToPhrase[count] = true;
-  //   console.log(`finished playing kite section ${count} duration ${duration}`);
-  // }, `+${duration - .25}`);
-  // if (transportEventIds.has(count)) {
-  //   let id = transportEventIds.get(count);
-  //   console.log(`cancelling transport event id ${id} for portion ${count}`);
-  //   Tone.Transport.cancel(id);
-  // }
-  // transportEventIds.set(count, eventId);
-  // player.loop = true;
-  // player.loopStart = lettingGoOfTheKiteTimeStamps[phraseStartIdx];
-  // player.loopEnd = lettingGoOfTheKiteTimeStamps[phraseEndIdx];
-  // player.start();
 
-  // option 2 (to try): dont reset the id every time, make it such that
-  // if you've played any portion of the current sample for the duration of the
-  // snippet, you can move on
   let currentPosition = lettingGoOfTheKiteTimeStamps[phraseStartIdx] + ((lastPhraseEnd - lastPhraseStart)/1000)%duration;
   console.log(`player wants to seek to ${currentPosition} state ${player.state} count ${count}`);
   if (!transportEventIds.has(count)) {
@@ -387,12 +305,6 @@ function setKiteLoop(player, count) {
     let eventId = Tone.Transport.scheduleOnce(function() {
       hasListenedToPhrase[phraseStartIdx] = true;
       console.log(`DONE finished playing kite section ${count} (pStart: ${phraseStartIdx} pend ${phraseEndIdx}) duration ${duration} elapsed: ${lastPhraseEnd-lastPhraseStart}`);
-      // lastPhraseStart = 0;
-      // lastPhraseEnd = 0;
-
-      // uncomment to advance phrase automatically
-      //updatePhraseProgress(count);
-      //transportEventIds.delete(count);
     }, `+${duration}`);
     transportEventIds.set(count, eventId);
 
@@ -408,35 +320,5 @@ function setKiteLoop(player, count) {
     if (player.state != 'started') {
       player.start();
     }
-    // let currentPosition = lettingGoOfTheKiteTimeStamps[phraseStartIdx] + ((lastPhraseEnd - lastPhraseStart)/1000)%duration;
-    // console.log(`player wants to seek to ${currentPosition} state ${player.state}`);
-    // if (player.state != 'started') {
-    //   let currentPosition = lettingGoOfTheKiteTimeStamps[phraseStartIdx] + ((lastPhraseEnd - lastPhraseStart)/1000)%duration;
-    //   let elapsed = (lastPhraseEnd - lastPhraseStart)/1000;
-
-    //   console.log(`seeking to last known spot: ${count} ${currentPosition}; elapsed: ${elapsed} start ${lastPhraseStart} end ${lastPhraseEnd} duration: ${duration}`);
-    //   player.seek(currentPosition);
-    //   player.start();
-    // }
   }
-
-  // if (player.state != 'started' || player.st) {
-  //   player.start();
-  // }
-  
-  // player.loop = true;
-  // player.loopStart = lettingGoOfTheKiteTimeStamps[count];
-  // player.loopEnd = lettingGoOfTheKiteTimeStamps[(count + 1) % lettingGoOfTheKiteTimeStamps.length];
-  // player.start();
 }
-
-// desired behavior
-// key down 
-// get last listened to phrase => #
-// a phrase starts #+1 - #+2
-// constraints:
-// * phrase plays for at least as long as duration (#+2 - #+1)
-// * on keyup, phrase pauses
-// * when subsequent keydown is pressed, phrase resumes
-// when duration (#+2 - #+1) has passed, we have opportunity to increment phrase progress
-// loops while key is down
