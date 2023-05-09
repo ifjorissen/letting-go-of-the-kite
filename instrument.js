@@ -1,3 +1,34 @@
+// class InstrumentGenerator {
+//   activelyPlaying;
+
+//   constructor() {
+//     this.activelyPlaying = new Map();
+//   }
+
+//   /**  */
+//   generate(scaleIdx);
+
+//   startNote();
+
+//   stopNote();
+// }
+
+// class Strings extends InstrumentGenerator {
+//   selectedArpPattern;
+//   activelyPlaying;
+
+//   constructor() {
+//     this.activelyPlaying = new Map();
+//   }
+
+//   /**  */
+//   generate();
+
+//   startNote();
+
+//   stopNote();
+// }
+
 const majorIntervalAbsolute = [0, 4, 7, 11];
 const minorIntervalAbsolute = [0, 3, 7, 10];
 const powerIntervalAbsolute = [0, 7, 12];
@@ -94,7 +125,7 @@ const noteToVoicingsMap = new Map([
     // [7,10,14,16,18 /* Badd4: b,e,b,d#,f# */],
     // [7,9,10,11 /* Badd4: b,d#,e,f# */],
   ]],
-])
+]);
 
 // Array representing octave [C0, B0]
 //24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36];
@@ -112,6 +143,7 @@ class Instrument {
 
   arpSubdivision = "4n";
   arpNoteDuration = "4n";
+  arpNoteProbability = .8;
 
   #scale = generateKeyOctave(this.#selectedTonic, this.#selectedScalePattern, this.#selectedOctave);
 
@@ -340,13 +372,13 @@ class Instrument {
   
     let [arpNotes, chordNotes] = this.generateNotes(scaleIdx);
     let drumSeq = this.makeDrumPart(this.drum);
-    console.log("arpNotes, chordNotes");
-    console.log(arpNotes, arpNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
-    console.log(chordNotes, chordNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
+    //console.log("arpNotes, chordNotes");
+    //console.log(arpNotes, arpNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
+    //console.log(chordNotes, chordNotes.map((n) => Tone.Frequency(n, "midi").toNote()));
     //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "8n", "random");
     //let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, "4n", "random");
 
-    let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, this.arpSubdivision, this.arpNoteDuration);
+    let arp = makeArp(this.strings, arpNotes, this.selectedArpPattern, this.arpSubdivision, this.arpNoteDuration, this.arpNoteProbability);
 
     let playChordStop = playChord(this.synth, chordNotes);
     arp.start(0);
@@ -384,19 +416,19 @@ class Instrument {
     const seq = new Tone.Sequence((time, note) => {
       synth.triggerAttackRelease(note, 0.1, time);
       // subdivisions are given as subarrays
-    }, [null, "A0", null, null], "8n");
+    }, [null, "B0", null, null], "8n");
     return seq;
   }
   
   generateNotes(rootNoteScaleIdx) {
     let scale = this.#scale;
     if (this.selectedPlayMode == PlayMode.Voices) {
-      let voicings = noteToVoicingsMap.get(rootNoteScaleIdx) ?? [[0,2,4]];
+      let voicings = this.#noteToVoicingsMap.get(rootNoteScaleIdx) ?? [[0,2,4]];
       let vid = Math.floor(Math.random() * voicings.length);
       let voicing = voicings[vid];
       let rootScaleNote = scale[rootNoteScaleIdx % (scale.length)];
-      console.log(`voices playmode for note#: ${rootNoteScaleIdx} ${frequencyFromNoteNumber(rootScaleNote).toNote()} voicing: ${voicing}`);
-      console.log(scale);
+      //console.log(`voices playmode for note#: ${rootNoteScaleIdx} ${frequencyFromNoteNumber(rootScaleNote).toNote()} voicing: ${voicing}`);
+      //console.log(scale);
       let arpNotes = generateInterval(rootNoteScaleIdx, voicing, scale);
       let chordNotes = arpNotes;
       return [arpNotes, chordNotes];
@@ -417,23 +449,23 @@ class Instrument {
       }
       let pitchedUp = rootScaleNote + 12;
   
-      let chordNotes = new Set([pitchedDown, ...this.generateTriad(rootNoteScaleIdx, 0, scale), pitchedUp]);
+      let chordNotes = new Set([pitchedDown, ...generateTriad(rootNoteScaleIdx, 0, scale), pitchedUp]);
       chordNotes.delete(rootScaleNote);
       return [arpNotes, Array.from(chordNotes)];
     }
   }
+}
 
-  generateTriad(rootNoteScaleIdx, seventhChance = .5, scale) {
-    const intervals = [[0,2,4], [0,4,9], [0,4,7,9]]; 
-    let vid = Math.floor(Math.random() * intervals.length);
-    let interval = intervals[vid];
+function generateTriad(rootNoteScaleIdx, seventhChance = .5, scale) {
+  const intervals = [[0,2,4], [0,4,9], [0,4,7,9]]; 
+  let vid = Math.floor(Math.random() * intervals.length);
+  let interval = intervals[vid];
 
-    if (Math.random() < seventhChance) {
-      interval.push(6);
-    }
-    console.log(`generate chord ${rootNoteScaleIdx + 1}`);
-    return generateInterval(rootNoteScaleIdx, interval, scale);
+  if (Math.random() < seventhChance) {
+    interval.push(6);
   }
+  console.log(`generate chord ${rootNoteScaleIdx + 1}`);
+  return generateInterval(rootNoteScaleIdx, interval, scale);
 }
 
 function playChord(synth, midiNotes, duration) {

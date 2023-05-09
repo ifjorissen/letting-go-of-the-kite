@@ -1,13 +1,13 @@
 async function togglePlaying(playing, playerState) {
   await Tone.start();
   playing = !playing;
-  console.log(`togglePlaying isPlaying ${playing}`);
+  // console.log(`togglePlaying isPlaying ${playing}`);
   
   if (playing) {
     Tone.Transport.start();
   } else {
     if (playerState == "started") {
-      console.log("pause");
+      // console.log("pause");
       // Use the Tone.Transport to pause audio
       Tone.Transport.cancel();
       Tone.Transport.pause();
@@ -72,7 +72,7 @@ function thread() {
 // }
 
 function generateInterval(rootNoteScaleIdx, interval, scale) {
-  console.log(`generate interval ${rootNoteScaleIdx}`);
+  //console.log(`generate interval ${rootNoteScaleIdx}`);
   //console.log(interval, scale);
   // TODO: use tone.Frequency https://tonejs.github.io/docs/14.7.77/fn/Frequency
   // todo: consider using Tone.Frequency.harmonize
@@ -83,7 +83,7 @@ function generateInterval(rootNoteScaleIdx, interval, scale) {
     // if idx > 7 pitch note up an octave
     let scaleIndex = idx % scale.length;
     if (scaleIndex < 0) {
-      console.log(`scale index ${scaleIndex} newidx: ${(scale.length) + scaleIndex}`)
+      // console.log(`scale index ${scaleIndex} newidx: ${(scale.length) + scaleIndex}`)
       scaleIndex = (scale.length) + scaleIndex;
     }
     let scaleNote = scale[scaleIndex];
@@ -92,7 +92,7 @@ function generateInterval(rootNoteScaleIdx, interval, scale) {
     // }
     let original = scaleNote;
     scaleNote += Math.floor(Math.abs(idx/scale.length)) * (Math.sign(idx)) * 12;
-    console.log(`i ${i} idx: ${idx} rootnoteid: ${rootNoteScaleIdx} original output: ${original} scaled: ${scaleNote}`);
+    //console.log(`i ${i} idx: ${idx} rootnoteid: ${rootNoteScaleIdx} original output: ${original} scaled: ${scaleNote}`);
     return scaleNote;
   });
   // const notes = interval.map((i) => {
@@ -103,8 +103,8 @@ function generateInterval(rootNoteScaleIdx, interval, scale) {
   //   }
   //   return scaleNote;
   // });
-  console.log(notes);
-  console.log(notes.map((note) =>Tone.Frequency(note, "midi").toNote()));
+  // console.log(notes);
+  // console.log(notes.map((note) =>Tone.Frequency(note, "midi").toNote()));
   return notes;
 }
 
@@ -122,7 +122,7 @@ function frequencyFromNoteNumber(note) {
 function getArpPatternForKey(key) {
   let pattern = keyToArpPatternMap.get(key);
   if (pattern != undefined) {
-    console.log(`get arp pattern for key ${key} pattern ${pattern}`);
+    // console.log(`get arp pattern for key ${key} pattern ${pattern}`);
   }
   return pattern;
 }
@@ -130,7 +130,7 @@ function getArpPatternForKey(key) {
 function getTonicForKey(key) {
   let tonic = keyToTonicMap.get(key);
   if (tonic != undefined) {
-    console.log(`get tonic note for key ${key} tonic ${tonic}`);
+    // console.log(`get tonic note for key ${key} tonic ${tonic}`);
   }
   return tonic;
 }
@@ -138,7 +138,7 @@ function getTonicForKey(key) {
 function getScaleNoteIndexForKey(key) {
   let id = keyToScaleMap.get(key);
   if (id != undefined) {
-    console.log(`get scale idx note for key ${key} id ${id}`);
+    // console.log(`get scale idx note for key ${key} id ${id}`);
   }
   return id;
 }
@@ -146,7 +146,7 @@ function getScaleNoteIndexForKey(key) {
 function getMidiNoteForKey(key) {
   let idx = keyToScaleMap.get(key);
   if (idx != undefined) {
-    console.log(`get midi note for key ${key}`);
+    // console.log(`get midi note for key ${key}`);
   }
   return scale[idx];
 }
@@ -160,7 +160,7 @@ function getScalePatternForKey(key) {
   }
 
   if (pattern != undefined) {
-    console.log(`get scale pattern for key ${key} scale ${pattern}`);
+    // console.log(`get scale pattern for key ${key} scale ${pattern}`);
   }
   return pattern;
 }
