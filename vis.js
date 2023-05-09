@@ -363,8 +363,8 @@ let initialObjSettings = function(sketchWidth, sketchHeight) {
   let desiredGrassHeight = desiredGrassWidth/grassAspectRatio;
 
   let magnifyingGlassAspectRatio = magnifyingGlass.width/magnifyingGlass.height;
-  let desiredMagnifyingGlassWidth = sketchWidth/1.5;
-  let desiredMagnifyingGlassHeight = desiredMagnifyingGlassWidth/magnifyingGlassAspectRatio;
+  let desiredMagnifyingGlassWidth = desiredMagnifyingGlassHeight*magnifyingGlassAspectRatio;
+  let desiredMagnifyingGlassHeight = sketchHeight;
 
   return new Map([
     ['sky', {
@@ -479,7 +479,7 @@ let initialObjSettings = function(sketchWidth, sketchHeight) {
       asset: kiteWalking,
     }],
     ['city', {
-      asset: kiteWalking,
+      asset: city,
     }],
   ]);
 };
