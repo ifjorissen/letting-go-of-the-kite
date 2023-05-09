@@ -121,6 +121,7 @@ let windPlayer;
 
 async function instrumentSetup() {
   kitePlayer = new Tone.Player("assets/letting_go_of_the_kite.m4a");
+  kitePlayer.volume = -5;
   windPlayer = new Tone.Player("assets/santa_fe_wind.m4a");
 
   const reverbEffect = new Tone.Reverb({delay: .5, preDelay: .05, wet: .75});
@@ -202,8 +203,8 @@ async function setupInstrumentEffects(instrument) {
   feedbackDelayEffect.toDestination();
   reverbEffect.toDestination();
 
-  instrument.volume = -10;
-  instrument.strings.set({volume: -15});
+  instrument.volume = -5;
+  instrument.strings.set({volume: -10});
 
   instrument.synth.chain(chorusEffect, reverbEffect);
   instrument.drum.connect(feedbackDelayEffect);
