@@ -232,10 +232,10 @@ function setupEventListeners(instrument) {
         // set wind loop
         if (windPlayer.state != 'started') {
           console.log('wind!');
-          windPlayer.loop = true;
+          windPlayer.loop = 1;
           windPlayer.loopStart = windGusts[0];
           windPlayer.loopEnd = windGusts[1];
-          windPlayer.start()
+          windPlayer.start();
           //windPlayer.start("+.5");
         }
       } else {
