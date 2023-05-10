@@ -63,7 +63,7 @@ window.addEventListener("DOMContentLoaded", async (_) => {
     //   console.log('resetting has listened to phrase');
     //   hasListenedToPhrase.fill(false);
     // }
-    if (phraseId == 14) {
+    if (phraseId == 14 && hasListenedToPhrase[14]) {
       kitePlayer.loop = false;
       //kitePlayer.stop();
     }
@@ -250,19 +250,24 @@ function setupEventListeners(instrument) {
     const scaleIdx = getScaleNoteIndexForKey(event.key);
     instrument.stopNote(scaleIdx);
 
-    if (scaleIdx != undefined) {
+    if (scaleIdx != undefined || !instrument.isPlayingSound()) {
+      lastPhraseEnd = Tone.Transport.now();
+
       let phraseProgress = hasListenedToPhrase.findIndex((e) => !e);
       updatePhraseProgress(phraseProgress);
-    }
-
-    // stop the samples if there's nothing playing
-    if (!instrument.isPlayingSound()) {
-      //console.log('should stop all samples');
-      lastPhraseEnd = Tone.Transport.now();
       //samples.stopAll();
       windPlayer.stop();
       kitePlayer.stop();
     }
+
+    // stop the samples if there's nothing playing
+    // if (!instrument.isPlayingSound()) {
+    //   //console.log('should stop all samples');
+    //   lastPhraseEnd = Tone.Transport.now();
+    //   //samples.stopAll();
+    //   windPlayer.stop();
+    //   kitePlayer.stop();
+    // }
     //console.log('keyup next phrase' + phraseProgress);
   });
 }
@@ -316,7 +321,8 @@ function setKiteLoop(player, count) {
     if (player.state != 'started') {
       player.start();
     }
-  } else {
+  } 
+  else {
     player.seek(currentPosition);
     if (player.state != 'started') {
       player.start();

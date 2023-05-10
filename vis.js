@@ -128,6 +128,7 @@ function draw() {
     return; 
   }
 
+  //console.log(phraseProgress);
   switch (phraseProgress) {
     case 0:
     case 1:
@@ -452,7 +453,7 @@ let initialObjSettings = function(sketchWidth, sketchHeight) {
     }],
     ['magnifyingGlass', {
       asset: magnifyingGlass,
-      startPos: createVector(sketchWidth-desiredMagnifyingGlassWidth, sketchHeight-desiredMagnifyingGlassHeight),
+      startPos: createVector(sketchWidth/2-desiredMagnifyingGlassWidth/4, sketchHeight-desiredMagnifyingGlassHeight),
       width: desiredMagnifyingGlassWidth,
       height: desiredMagnifyingGlassHeight,
       defaultIdle: undefined,
