@@ -235,7 +235,8 @@ function setupEventListeners(instrument) {
           windPlayer.loop = true;
           windPlayer.loopStart = windGusts[0];
           windPlayer.loopEnd = windGusts[1];
-          windPlayer.start("+.75d");
+          windPlayer.start()
+          //windPlayer.start("+.5");
         }
       } else {
         // console.log('STOP WIND???');
