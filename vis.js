@@ -296,7 +296,7 @@ function draw() {
       let magnifying = hindsightScene.get('magnifyingGlass');
       // shrink the aloft scene into the magnifying glass over time
       push()
-      translate(magnifying.x + (width-magnifying.x)/5, magnifying.y + (height-magnifying.y)/5);
+      translate(magnifying.x + (width-magnifying.x)/8, magnifying.y + (height-magnifying.y)/5);
       scale(.2);
       aloftScene.update();
       aloftScene.render();
